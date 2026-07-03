@@ -11,6 +11,7 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "esp_scan.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "wifi.h"
@@ -175,6 +176,45 @@ static void wifi_task(void *arg)
 {
     ESP_LOGI(TAG, "WiFi task started");
     vTaskDelete(NULL);
+}
+
+/**
+ * @brief Scan for available WiFi networks
+ * @param results Array to store scan results (max WIFI_SCAN_RESULTS_MAX entries)
+ * @param max_results Maximum number of results to retrieve
+ * @return ESP_OK on success, ESP_ERR_NOT_INITIALIZED if WiFi not initialized, ESP_FAIL if scan failed
+ */
+esp_err_t wifi_scan(wifi_ap_record_t *results, size_t max_results)
+{
+    if (!wifi_initialized) {
+        return ESP_ERR_NOT_INITIALIZED;
+    }
+    
+    ESP_LOGI(TAG, "Scanning for WiFi networks...");
+    
+    // Start scan
+    esp_err_t err = esp_wifi_scan_start(NULL, true);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to start scan: %s", esp_err_to_name(err));
+        return err;
+    }
+    
+    // Wait for scan to complete
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    
+    // Get results
+    uint16_t num_results = 0;
+    err = esp_wifi_scan_get_ap_records(&num_results, results);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get scan results: %s", esp_err_to_name(err));
+        return err;
+    }
+    
+    // Limit results to max_results
+    size_t actual_results = num_results > max_results ? max_results : num_results;
+    
+    ESP_LOGI(TAG, "Found %zu networks (requested: %zu)", actual_results, max_results);
+    return ESP_OK;
 }
 
 /**

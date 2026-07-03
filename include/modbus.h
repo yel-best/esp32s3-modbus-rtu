@@ -35,6 +35,17 @@ esp_err_t modbus_read_register(uint16_t address, uint16_t *value);
 esp_err_t modbus_write_register(uint16_t address, uint16_t value);
 
 /**
+ * @brief Send a Modbus PDU (Protocol Data Unit)
+ * @param fc Function code
+ * @param addr Register address
+ * @param data Data bytes for the request
+ * @param data_len Length of data
+ * @return ESP_OK on success, ESP_ERR_INVALID_SIZE if data too large
+ */
+esp_err_t modbus_send_pdu(uint8_t fc, uint16_t addr,
+                         const uint8_t *data, size_t data_len);
+
+/**
  * @brief Send a Modbus request and receive response
  * @param cmd Pointer to Modbus command buffer (max 256 bytes)
  * @param length Length of command

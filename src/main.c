@@ -36,6 +36,7 @@ void app_main(void)
 
     /* Initialize Modbus RTU component */
     modbus_init();
+    modbus_start();
     
     /* Initialize WiFi component */
     wifi_init();

@@ -8,6 +8,8 @@
 
 #include "esp_err.h"
 #include "esp_wifi_types.h"
+#include "esp_scan.h"
+#include "freertos/FreeRTOS.h"
 
 /**
  * @brief Initialize WiFi subsystem
@@ -40,5 +42,13 @@ esp_err_t wifi_start_ap(const char *ssid, const char *password);
  * @return Current WiFi mode (WIFI_MODE_STA, WIFI_MODE_AP, etc.)
  */
 wifi_mode_t wifi_get_mode(void);
+
+/**
+ * @brief Scan for available WiFi networks
+ * @param results Array to store scan results (max WIFI_SCAN_RESULTS_MAX entries)
+ * @param max_results Maximum number of results to retrieve
+ * @return ESP_OK on success, ESP_ERR_NOT_INITIALIZED if WiFi not initialized, ESP_FAIL if scan failed
+ */
+esp_err_t wifi_scan(wifi_ap_record_t *results, size_t max_results);
 
 #endif /* WIFI_H */
