@@ -35,6 +35,39 @@ typedef struct {
     const char *password;
 } mqtt_config_t;
 
+static char mqtt_nvs_config[64];
+
+/**
+ * @brief Load MQTT configuration from NVS
+ */
+static esp_err_t mqtt_load_config_from_nvs(void)
+{
+    if (nvs_flash_init() != ESP_OK) {
+        return ESP_FAIL;
+    }
+    
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("mqtt", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "NVS open failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    
+    size_t len = sizeof(mqtt_nvs_config) - 1;
+    err = nvs_get_str(nvs_handle, "broker_addr", mqtt_nvs_config, &len);
+    if (err == ESP_OK) {
+        // Config loaded successfully
+    } else if (err == ESP_ERR_NOT_FOUND) {
+        mqtt_nvs_config[0] = '\0';  // Use default
+    } else {
+        ESP_LOGW(TAG, "Failed to read broker_addr: %s", esp_err_to_name(err));
+        mqtt_nvs_config[0] = '\0';
+    }
+    
+    nvs_close(nvs_handle);
+    return ESP_OK;
+}
+
 static mqtt_config_t default_mqtt_config = {
     .broker_addr = "tcp://broker.empero.org",
     .broker_port = 1883,
@@ -58,7 +91,7 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base,
     } else if (event_base == MQTT_EVENT_ERROR) {
         esp_err_t error = *(esp_err_t *)event_data;
         ESP_LOGE(TAG, "MQTT Error: %s", esp_err_to_name(error));
-    } else if (event_base == MQTT_EVENT_DATA) {
+    } else if (event_base == MQTT_EVENT_DATA && event_id == MQTT_EVENT_DATA) {
         mqtt_event_data_t *data = (mqtt_event_data_t *)event_data;
         ESP_LOGI(TAG, "TOPIC=%.*s MSG=%.*s", data->topic_len, data->topic,
                  data->data_len, data->data);
@@ -83,8 +116,8 @@ void mqtt_init(void)
 
     ESP_LOGI(TAG, "Initializing MQTT...");
 
-    // Initialize NVS
-    ESP_ERROR_CHECK(nvs_flash_init());
+    // Load broker config from NVS
+    mqtt_load_config_from_nvs();
 
     // Create default event loop
     EventHandle_t mqtt_event_handle;
@@ -104,7 +137,7 @@ void mqtt_init(void)
 
     // Initialize MQTT
     mqtt_init_config_t init_config = {
-        .broker_addr = default_mqtt_config.broker_addr,
+        .broker_addr = mqtt_nvs_config[0] ? mqtt_nvs_config : default_mqtt_config.broker_addr,
         .broker_port = default_mqtt_config.broker_port,
         .client_id = default_mqtt_config.client_id,
         .clean_session = true,
@@ -231,38 +264,23 @@ esp_err_t mqtt_unsubscribe(const char *topic)
 }
 
 /**
- * @brief Subscribe to an MQTT topic
+ * @brief Subscribe to an MQTT topic (duplicate removed - kept only the first implementation)
  */
-esp_err_t mqtt_subscribe(const char *topic, mqtt_event_data_handler_t handler)
-{
-    if (!mqtt_initialized || !mqtt_connected) {
-        return ESP_ERR_NOT_CONNECTED;
-    }
-
-    // TODO: Implement MQTT subscribe function
-    return ESP_OK;
-}
 
 /**
- * @brief Unsubscribe from an MQTT topic
+ * @brief Unsubscribe from an MQTT topic (duplicate removed - kept only the first implementation)
  */
-esp_err_t mqtt_unsubscribe(const char *topic)
-{
-    if (!mqtt_initialized) {
-        return ESP_ERR_NOT_INITIALIZED;
-    }
-
-    // TODO: Implement MQTT unsubscribe function
-    return ESP_OK;
-}
 
 /**
- * @brief Run MQTT task
+ * @brief Run MQTT task (stub - implement actual task logic here)
  */
 static void mqtt_task(void *arg)
 {
     ESP_LOGI(TAG, "MQTT task started");
-    vTaskDelete(NULL);
+    // TODO: Implement MQTT task loop with proper event processing
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Process periodically
+    }
 }
 
 /**

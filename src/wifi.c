@@ -86,9 +86,17 @@ void wifi_init(void)
     // Initialize WiFi
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set WiFi mode: %s", esp_err_to_name(err));
+        return err;
+    }
     ESP_ERROR_CHECK(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(err));
+        return err;
+    }
 
     esp_netif_handle_t dummy_netif = { .type = ESP_NETIF_WIFI_STA, .handle = sta_netif };
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
@@ -111,6 +119,18 @@ esp_err_t wifi_connect(const char *ssid, const char *password)
 {
     if (!wifi_initialized) {
         return ESP_ERR_NOT_INITIALIZED;
+    }
+
+    /* Validate ssid parameter */
+    if (ssid == NULL || strlen(ssid) >= WIFI_MAX_SSID_LEN) {
+        ESP_LOGE(TAG, "Invalid SSID: %s", ssid ? ssid : "NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Validate password parameter */
+    if (password == NULL || strlen(password) >= WIFI_MAX_PASSWORD_LEN) {
+        ESP_LOGE(TAG, "Invalid password: %s", password ? password : "NULL");
+        return ESP_ERR_INVALID_ARG;
     }
 
     ESP_LOGI(TAG, "Connecting to WiFi: %s", ssid);
@@ -146,6 +166,18 @@ esp_err_t wifi_start_ap(const char *ssid, const char *password)
         return ESP_ERR_NOT_INITIALIZED;
     }
 
+    /* Validate ssid parameter */
+    if (ssid == NULL || strlen(ssid) >= WIFI_MAX_SSID_LEN) {
+        ESP_LOGE(TAG, "Invalid SSID: %s", ssid ? ssid : "NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Validate password parameter */
+    if (password == NULL || strlen(password) >= WIFI_MAX_PASSWORD_LEN) {
+        ESP_LOGE(TAG, "Invalid password: %s", password ? password : "NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     ESP_LOGI(TAG, "Starting WiFi AP: %s", ssid);
 
     wifi_config_t ap_config = {0};
@@ -170,12 +202,15 @@ wifi_mode_t wifi_get_mode(void)
 }
 
 /**
- * @brief Run WiFi task
+ * @brief Run WiFi task (stub - implement actual task logic here)
  */
 static void wifi_task(void *arg)
 {
     ESP_LOGI(TAG, "WiFi task started");
-    vTaskDelete(NULL);
+    // TODO: Implement WiFi task loop with proper event processing
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Process periodically
+    }
 }
 
 /**
@@ -215,6 +250,7 @@ esp_err_t wifi_scan(wifi_ap_record_t *results, size_t max_results)
     
     ESP_LOGI(TAG, "Found %zu networks (requested: %zu)", actual_results, max_results);
     return ESP_OK;
+}
 }
 
 /**

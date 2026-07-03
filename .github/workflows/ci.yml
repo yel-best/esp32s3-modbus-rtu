@@ -1,0 +1,78 @@
+name: ESP-IDF CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  IDF_PATH: ~/esp/idf-v5.4.4
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup ESP-IDF
+        uses: espressif/idf-actions/setup-idf@v2
+        with:
+          idf-version: 'v5.4.4'
+          toolchain-patch: 0
+
+      - name: Configure project
+        run: |
+          idf.py set-target esp32s3
+          idf.py fullclean
+          idf.py menuconfig
+          # 设置默认配置（可选）
+          idf.py -p default sdkconfig
+
+      - name: Build project
+        run: idf.py build
+
+      - name: Run tests
+        run: idf.py test
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3-modbus-rtu-build
+          path: build/esp32s3_modbus-rtu/
+
+  flash-and-monitor:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup ESP-IDF
+        uses: espressif/idf-actions/setup-idf@v2
+        with:
+          idf-version: 'v5.4.4'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: esp32s3-modbus-rtu-build
+          path: build/
+
+      - name: Flash to ESP32-S3 (USB)
+        if: github.event_name != 'pull_request'  # PR 无法访问硬件
+        uses: espressif/idf-actions/flash-idf@v1
+        with:
+          port: /dev/ttyUSB0
+          monitor-port: /dev/ttyUSB0
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3-modbus-rtu-firmware.bin
+          path: build/esp32s3_modbus-rtu/firmware.bin

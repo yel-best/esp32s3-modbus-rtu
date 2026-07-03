@@ -18,6 +18,7 @@
 #define MODBUS_RX_BUF_SIZE 256
 
 static uart_handle_t uart_modbus_handle;
+static QueueHandle_t modbus_rx_queue = NULL;
 static TaskHandle_t modbus_task_handle = NULL;
 static bool modbus_initialized = false;
 
@@ -48,17 +49,27 @@ void modbus_init(void)
     
     uart_modbus_handle = UART_HANDLE(UART_NUM_0);
 
+    // Create queue for receiving Modbus responses
+    modbus_rx_queue = xQueueCreate(MODBUS_RX_BUF_SIZE, sizeof(uint8_t));
+    if (modbus_rx_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create Modbus RX queue");
+        return;
+    }
+
     modbus_initialized = true;
     ESP_LOGI(TAG, "Modbus RTU initialized on UART0 (9600bps)");
 }
 
 /**
- * @brief Run Modbus RTU task
+ * @brief Run Modbus RTU task (stub - implement actual task logic here)
  */
 static void modbus_task(void *arg)
 {
     ESP_LOGI(TAG, "Modbus RTU task started");
-    vTaskDelete(NULL);
+    // TODO: Implement Modbus task loop with proper event processing
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Process periodically
+    }
 }
 
 /**
@@ -93,21 +104,25 @@ static esp_err_t modbus_build_read_req(uint16_t addr, uint8_t quantity,
 }
 
 /**
- * @brief Receive Modbus response from UART
+ * @brief Receive Modbus response from UART using queue (non-blocking)
  * @param buf Buffer for received data
  * @param max_len Maximum length to receive
- * @return Actual bytes received (including CRC)
+ * @return Actual bytes received (including CRC), ESP_FAIL on error
  */
-static size_t modbus_recv(uint8_t *buf, size_t max_len)
+static esp_err_t modbus_recv(uint8_t *buf, size_t max_len)
 {
     uint8_t rx_buf[256];
-    size_t rx_len;
     
-    vTaskDelay(pdMS_TO_TICKS(50));
-    rx_len = uart_read_bytes(uart_modbus_handle, rx_buf, max_len, pdMS_TO_TICKS(1000));
+    // Receive from queue with timeout (1s)
+    if (xQueueReceive(modbus_rx_queue, rx_buf, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGW(TAG, "No data received from Modbus device");
+        return ESP_FAIL;
+    }
     
-    if (rx_len == 0) {
-        return 0;
+    size_t rx_len = (size_t)xQueueGetFront(modbus_rx_queue);
+    if (rx_len == 0 || rx_len > max_len) {
+        ESP_LOGW(TAG, "Invalid received length: %zu", rx_len);
+        return ESP_FAIL;
     }
     
     // Validate CRC
@@ -116,12 +131,12 @@ static size_t modbus_recv(uint8_t *buf, size_t max_len)
     
     if (crc != tx_crc) {
         ESP_LOGW(TAG, "CRC mismatch: expected 0x%04X, got 0x%04X", tx_crc, crc);
-        return 0;
+        return ESP_FAIL;
     }
     
     // Copy to output buffer
     memcpy(buf, rx_buf, rx_len);
-    return rx_len;
+    return ESP_OK;
 }
 
 /**
@@ -162,8 +177,8 @@ esp_err_t modbus_read_registers(uint16_t addr, uint16_t *values, size_t count)
     }
     
     // Receive response
-    rx_len = modbus_recv(rx_buf, sizeof(rx_buf));
-    if (rx_len < 5) {
+    esp_err_t recv_err = modbus_recv(rx_buf, sizeof(rx_buf));
+    if (recv_err != ESP_OK || rx_len < 5) {
         ESP_LOGW(TAG, "Invalid response length: %zu", rx_len);
         return ESP_FAIL;
     }
@@ -229,8 +244,8 @@ esp_err_t modbus_read_register(uint16_t address, uint16_t *value)
     }
     
     // Receive response
-    rx_len = modbus_recv(rx_buf, sizeof(rx_buf));
-    if (rx_len < 5) {
+    esp_err_t recv_err = modbus_recv(rx_buf, sizeof(rx_buf));
+    if (recv_err != ESP_OK || rx_len < 5) {
         ESP_LOGW(TAG, "Invalid response length: %zu", rx_len);
         return ESP_FAIL;
     }
