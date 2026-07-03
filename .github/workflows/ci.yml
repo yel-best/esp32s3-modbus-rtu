@@ -19,11 +19,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup ESP-IDF
-        uses: espressif/idf-actions/setup-idf@v2
-        with:
-          idf-version: 'v5.4.4'
-          toolchain-patch: 0
+      - name: Setup ESP-IDF (manual install)
+        run: |
+          echo "Installing ESP-IDF v5.4.4..."
+          wget -q https://dl.espressif.com/dl/esp-idf-v5.4.4.zip
+          unzip -q esp-idf-v5.4.4.zip -d ~/esp/
+          rm -f esp-idf-v5.4.4.zip
+          echo "ESP-IDF installed at $IDF_PATH"
+          source ~/esp/idf-v5.4.4/export.sh
 
       - name: Configure project
         run: |
@@ -53,10 +56,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup ESP-IDF
-        uses: espressif/idf-actions/setup-idf@v2
-        with:
-          idf-version: 'v5.4.4'
+      - name: Setup ESP-IDF (manual install)
+        run: |
+          echo "Installing ESP-IDF v5.4.4..."
+          wget -q https://dl.espressif.com/dl/esp-idf-v5.4.4.zip
+          unzip -q esp-idf-v5.4.4.zip -d ~/esp/
+          rm -f esp-idf-v5.4.4.zip
+          echo "ESP-IDF installed at $IDF_PATH"
+          source ~/esp/idf-v5.4.4/export.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -65,11 +72,11 @@ jobs:
           path: build/
 
       - name: Flash to ESP32-S3 (USB)
-        if: github.event_name != 'pull_request'  # PR 无法访问硬件
-        uses: espressif/idf-actions/flash-idf@v1
-        with:
-          port: /dev/ttyUSB0
-          monitor-port: /dev/ttyUSB0
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          echo "Flashing firmware to ESP32-S3 via USB..."
+          idf.py flash -p /dev/ttyUSB0 monitor
+          echo "Firmware flashed successfully!"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
