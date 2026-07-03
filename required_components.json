@@ -1,0 +1,11 @@
+{
+  "idf_version": "v5.4.4",
+  "target": "esp32s3",
+  "required_components": [
+    "esp_modem",
+    "esp_http_client",
+    "esp_event",
+    "esp_wifi",
+    "esp_netif"
+  ]
+}
