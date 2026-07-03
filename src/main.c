@@ -10,6 +10,9 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "modbus.h"
+#include "wifi.h"
+#include "mqtt.h"
 
 #define TAG "MODBUS_APP"
 
@@ -28,13 +31,17 @@ void app_main(void)
 
     printf("\n=== ESP32-S3 Modbus RTU Project ===\n");
     printf("ESP-IDF v5.4.4\n");
-    printf("Features: Modbus RTU, WiFi, MQTT\n");
+    printf("Components: Modbus RTU, WiFi, MQTT\n");
     printf("=================================\n\n");
 
-    /* TODO: Initialize Modbus RTU, WiFi, and MQTT components */
-    // modbus_init();
-    // wifi_init();
-    // mqtt_init();
+    /* Initialize Modbus RTU component */
+    modbus_init();
+    
+    /* Initialize WiFi component */
+    wifi_init();
+    
+    /* Initialize MQTT component */
+    mqtt_init();
 
-    printf("Application started successfully.\n\n");
+    printf("All components initialized.\n\n");
 }
