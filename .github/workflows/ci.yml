@@ -1,85 +1,123 @@
-name: ESP-IDF CI
+name: ESP-IDF CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
 
 env:
-  IDF_PATH: ~/esp/idf-v5.4.4
+  ESP_TARGET: esp32s3
+  BUILD_DIR: build
 
 jobs:
-  build-and-test:
+  build:
+    name: Build on Ubuntu
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
-      - name: Setup ESP-IDF (manual install)
-        run: |
-          echo "Installing ESP-IDF v5.4.4..."
-          wget -q https://dl.espressif.com/dl/esp-idf-v5.4.4.zip
-          unzip -q esp-idf-v5.4.4.zip -d ~/esp/
-          rm -f esp-idf-v5.4.4.zip
-          echo "ESP-IDF installed at $IDF_PATH"
-          source ~/esp/idf-v5.4.4/export.sh
+      - name: Install ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: "v5.4.4"
 
-      - name: Configure project
-        run: |
-          idf.py set-target esp32s3
-          idf.py fullclean
-          idf.py menuconfig
-          # 设置默认配置（可选）
-          idf.py -p default sdkconfig
+      - name: Print ESP-IDF version
+        run: idf.py --version
+
+      - name: Set target
+        run: idf.py set-target $ESP_TARGET
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.espressif
+            ${{ env.BUILD_DIR }}
+          key: ${{ runner.os }}-espidf-${{ env.ESP_TARGET }}-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake', '**/*.c', '**/*.cpp', '**/*.h', '**/*.hpp', 'sdkconfig.defaults') }}
+          restore-keys: |
+            ${{ runner.os }}-espidf-${{ env.ESP_TARGET }}-
 
       - name: Build project
         run: idf.py build
 
-      - name: Run tests
-        run: idf.py test
+      - name: Run size info
+        run: idf.py size
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: esp32s3-modbus-rtu-build
-          path: build/esp32s3_modbus-rtu/
+          name: esp-idf-build
+          path: |
+            ${{ env.BUILD_DIR }}/firmware.bin
+            ${{ env.BUILD_DIR }}/firmware.elf
+            ${{ env.BUILD_DIR }}/*.map
 
   flash-and-monitor:
+    name: Flash Firmware
     runs-on: ubuntu-latest
-    needs: build-and-test
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
 
-      - name: Setup ESP-IDF (manual install)
-        run: |
-          echo "Installing ESP-IDF v5.4.4..."
-          wget -q https://dl.espressif.com/dl/esp-idf-v5.4.4.zip
-          unzip -q esp-idf-v5.4.4.zip -d ~/esp/
-          rm -f esp-idf-v5.4.4.zip
-          echo "ESP-IDF installed at $IDF_PATH"
-          source ~/esp/idf-v5.4.4/export.sh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: esp32s3-modbus-rtu-build
-          path: build/
+          name: esp-idf-build
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Install ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: "v5.4.4"
 
       - name: Flash to ESP32-S3 (USB)
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           echo "Flashing firmware to ESP32-S3 via USB..."
           idf.py flash -p /dev/ttyUSB0 monitor
           echo "Firmware flashed successfully!"
 
-      - name: Upload firmware
+  release-package:
+    name: Package Release Artifacts
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: esp-idf-build
+          path: release
+
+      - name: Create release package
+        run: |
+          cd release
+          tar -czf ../esp-idf-firmware-${{ github.ref_name }}.tar.gz .
+
+      - name: Upload release package
         uses: actions/upload-artifact@v4
         with:
-          name: esp32s3-modbus-rtu-firmware.bin
-          path: build/esp32s3_modbus-rtu/firmware.bin
+          name: firmware-${{ github.ref_name }}
+          path: esp-idf-firmware-${{ github.ref_name }}.tar.gz
