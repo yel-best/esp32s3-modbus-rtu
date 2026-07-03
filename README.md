@@ -12,27 +12,36 @@ ESP32-S3 support for Modbus RTU, WiFi, and MQTT using ESP-IDF v5.4.4
 ## Project Structure
 ```
 esp32s3-modbus-rtu/
-├── src/
+├── main/                   # Main application component
+│   ├── CMakeLists.txt      # Component registration
 │   ├── main.c              # Application entry point
 │   ├── modbus.c            # Modbus RTU implementation
 │   ├── wifi.c              # WiFi implementation
-│   └── mqtt.c              # MQTT implementation
-├── include/
-│   ├── modbus.h            # Modbus RTU API
-│   ├── wifi.h              # WiFi API
-│   └── mqtt.h              # MQTT API
+│   ├── mqtt.c              # MQTT implementation
+│   └── include/
+│       ├── modbus.h        # Modbus RTU API
+│       ├── wifi.h          # WiFi API
+│       └── mqtt.h          # MQTT API
+├── tests/                  # Unit tests (not yet wired into the build)
 ├── docs/README.md          # Documentation
-├── CMakeLists.txt          # Build configuration
+├── .github/workflows/ci.yml # GitHub Actions build & release pipeline
+├── CMakeLists.txt          # Top-level ESP-IDF project file
 ├── sdkconfig.defaults      # Default ESP-IDF config
-├── required_components.json
 ├── LICENSE
 └── README.md
 ```
 
 ## Getting Started
-1. Ensure ESP-IDF v5.4.4 is installed and configured
-2. Build: `idf.py build`
-3. Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
+1. Ensure ESP-IDF v5.4.x is installed and configured
+2. Set target: `idf.py set-target esp32s3`
+3. Build: `idf.py build`
+4. Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
+
+## CI/CD
+Every push / PR to `main` or `develop` builds the firmware on GitHub Actions
+(ESP-IDF v5.4.4) and uploads `esp32s3_modbus_rtu.bin` / `.elf` / `.map`,
+bootloader and partition table as artifacts. Pushing a `v*` tag additionally
+packages them into a `.tar.gz` release archive.
 
 ## Components
 - **Modbus RTU**: Initialize with `modbus_init()`
