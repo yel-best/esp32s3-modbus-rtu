@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include "esp_log.h"
+#include "esp_err.h"
 #include "mqtt.h"
 #include "esp_netif.h"
 #include "esp_event.h"
@@ -175,8 +176,58 @@ esp_err_t mqtt_publish(const char *topic, const void *data, size_t data_len)
         return ESP_ERR_NOT_INITIALIZED;
     }
 
-    // TODO: Implement MQTT publish function
-    return ESP_OK;
+    ESP_LOGD(TAG, "Publishing to topic: %s", topic);
+    
+    esp_err_t err = mqtt_publish_data(topic, data, data_len);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Message published successfully");
+    } else {
+        ESP_LOGE(TAG, "Failed to publish: %s", esp_err_to_name(err));
+    }
+    
+    return err;
+}
+
+/**
+ * @brief Subscribe to an MQTT topic
+ */
+esp_err_t mqtt_subscribe(const char *topic, mqtt_event_data_handler_t handler)
+{
+    if (!mqtt_initialized || !mqtt_connected) {
+        return ESP_ERR_NOT_CONNECTED;
+    }
+
+    ESP_LOGI(TAG, "Subscribing to topic: %s", topic);
+    
+    esp_err_t err = mqtt_subscribe(topic, handler);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Subscription created successfully");
+    } else {
+        ESP_LOGE(TAG, "Failed to subscribe: %s", esp_err_to_name(err));
+    }
+    
+    return err;
+}
+
+/**
+ * @brief Unsubscribe from an MQTT topic
+ */
+esp_err_t mqtt_unsubscribe(const char *topic)
+{
+    if (!mqtt_initialized) {
+        return ESP_ERR_NOT_INITIALIZED;
+    }
+
+    ESP_LOGI(TAG, "Unsubscribing from topic: %s", topic);
+    
+    esp_err_t err = mqtt_unsubscribe(topic);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Unsubscription completed successfully");
+    } else {
+        ESP_LOGE(TAG, "Failed to unsubscribe: %s", esp_err_to_name(err));
+    }
+    
+    return err;
 }
 
 /**
