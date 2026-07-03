@@ -1,0 +1,20 @@
+# ESP-IDF build outputs
+build/
+out/
+monitor.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+*.bin
+*.elf
+*.o
+*.a
+
+# Serial monitor output
+serial-monitor.out
