@@ -68,6 +68,54 @@ esp_err_t modbus_send_pdu(uint8_t fc, uint16_t addr,
  */
 esp_err_t modbus_send(uint8_t *cmd, size_t length);
 
+/**
+ * @brief Read two consecutive registers as a 32-bit unsigned integer (big-endian)
+ * @param address Starting register address (read from addr and addr+1)
+ * @param value Pointer to store the 32-bit value
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_read_uint32(uint16_t address, uint32_t *value);
+
+/**
+ * @brief Read two consecutive registers as an IEEE754 single-precision float
+ * @param address Starting register address (read from addr and addr+1)
+ * @param value Pointer to store the float
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_read_float(uint16_t address, float *value);
+
+/**
+ * @brief Read four consecutive registers as an IEEE754 double-precision float
+ * @param address Starting register address (read from addr to addr+3)
+ * @param value Pointer to store the double
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_read_double(uint16_t address, double *value);
+
+/**
+ * @brief Write a 32-bit unsigned integer across two consecutive registers (big-endian)
+ * @param address Starting register address (writes to addr and addr+1)
+ * @param value 32-bit value to write
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_write_uint32(uint16_t address, uint32_t value);
+
+/**
+ * @brief Write an IEEE754 single-precision float across two consecutive registers
+ * @param address Starting register address (writes to addr and addr+1)
+ * @param value Float to write
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_write_float(uint16_t address, float value);
+
+/**
+ * @brief Write an IEEE754 double-precision float across four consecutive registers
+ * @param address Starting register address (writes to addr through addr+3)
+ * @param value Double to write
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no response
+ */
+esp_err_t modbus_write_double(uint16_t address, double value);
+
 #ifdef __cplusplus
 }
 #endif

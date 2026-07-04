@@ -279,3 +279,154 @@ esp_err_t modbus_send_pdu(uint8_t fc, uint16_t addr,
 
     return modbus_transact(tx_buf, 4 + data_len, NULL, 0, NULL);
 }
+
+/**
+ * @brief Read two consecutive registers as a 32-bit unsigned integer (big-endian)
+ */
+esp_err_t modbus_read_uint32(uint16_t address, uint32_t *value)
+{
+    uint8_t tx_buf[8];
+    uint8_t rx_buf[MODBUS_BUF_SIZE];
+    size_t rx_len = 0;
+
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    tx_buf[0] = MODBUS_SLAVE_ADDR;
+    tx_buf[1] = 0x03;
+    tx_buf[2] = address >> 8;
+    tx_buf[3] = address & 0xFF;
+    tx_buf[4] = 2 >> 8;  /* quantity = 2 */
+    tx_buf[5] = 2 & 0xFF;
+
+    esp_err_t err = modbus_transact(tx_buf, 6, rx_buf, sizeof(rx_buf), &rx_len);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (rx_len >= 2 && (rx_buf[1] & 0x80)) {  /* exception response */
+        ESP_LOGW(TAG, "Modbus exception code: %d", rx_len >= 3 ? rx_buf[2] : -1);
+        return ESP_FAIL;
+    }
+    if (rx_len < 3 + 2 * 2 || rx_buf[1] != 0x03 || rx_buf[2] != 4) {
+        ESP_LOGW(TAG, "Malformed response (len=%zu)", rx_len);
+        return ESP_FAIL;
+    }
+
+    *value = ((uint32_t)rx_buf[3] << 24) | ((uint32_t)rx_buf[4] << 16) |
+            ((uint32_t)rx_buf[5] << 8) | rx_buf[6];
+    return ESP_OK;
+}
+
+/**
+ * @brief Read two consecutive registers as an IEEE754 single-precision float
+ */
+esp_err_t modbus_read_float(uint16_t address, float *value)
+{
+    uint32_t uint32_val;
+    esp_err_t err = modbus_read_uint32(address, &uint32_val);
+    if (err != ESP_OK) {
+        return err;
+    }
+    *value = *(const float *)&uint32_val;  /* union-style cast, no extra code */
+    return ESP_OK;
+}
+
+/**
+ * @brief Read four consecutive registers as an IEEE754 double-precision float
+ */
+esp_err_t modbus_read_double(uint16_t address, double *value)
+{
+    uint8_t tx_buf[8];
+    uint8_t rx_buf[MODBUS_BUF_SIZE];
+    size_t rx_len = 0;
+
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    tx_buf[0] = MODBUS_SLAVE_ADDR;
+    tx_buf[1] = 0x03;
+    tx_buf[2] = address >> 8;
+    tx_buf[3] = address & 0xFF;
+    tx_buf[4] = 4 >> 8;  /* quantity = 4 */
+    tx_buf[5] = 4 & 0xFF;
+
+    esp_err_t err = modbus_transact(tx_buf, 6, rx_buf, sizeof(rx_buf), &rx_len);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (rx_len >= 2 && (rx_buf[1] & 0x80)) {  /* exception response */
+        ESP_LOGW(TAG, "Modbus exception code: %d", rx_len >= 3 ? rx_buf[2] : -1);
+        return ESP_FAIL;
+    }
+    if (rx_len < 3 + 4 * 2 || rx_buf[1] != 0x03 || rx_buf[2] != 8) {
+        ESP_LOGW(TAG, "Malformed response (len=%zu)", rx_len);
+        return ESP_FAIL;
+    }
+
+    uint64_t uint64_val = ((uint64_t)rx_buf[3] << 56) | ((uint64_t)rx_buf[4] << 48) |
+                          ((uint64_t)rx_buf[5] << 40) | ((uint64_t)rx_buf[6] << 32) |
+                          ((uint64_t)rx_buf[7] << 24) | ((uint64_t)rx_buf[8] << 16) |
+                          ((uint64_t)rx_buf[9] << 8) | rx_buf[10];
+    *value = *(const double *)&uint64_val;
+    return ESP_OK;
+}
+
+/**
+ * @brief Write a 32-bit unsigned integer across two consecutive registers (big-endian)
+ */
+esp_err_t modbus_write_uint32(uint16_t address, uint32_t value)
+{
+    uint8_t tx_buf[8];
+
+    tx_buf[0] = MODBUS_SLAVE_ADDR;
+    tx_buf[1] = 0x10;  /* function code 10: write multiple registers */
+    tx_buf[2] = address >> 8;
+    tx_buf[3] = address & 0xFF;
+    tx_buf[4] = 2 >> 8;  /* quantity = 2 */
+    tx_buf[5] = 2 & 0xFF;
+    tx_buf[6] = (value >> 24) & 0xFF;
+    tx_buf[7] = (value >> 16) & 0xFF;
+    tx_buf[8] = (value >> 8) & 0xFF;
+    tx_buf[9] = value & 0xFF;
+
+    return modbus_transact(tx_buf, 10, NULL, 0, NULL);
+}
+
+/**
+ * @brief Write an IEEE754 single-precision float across two consecutive registers
+ */
+esp_err_t modbus_write_float(uint16_t address, float value)
+{
+    uint32_t uint32_val;
+    memcpy(&uint32_val, &value, sizeof(float));
+    return modbus_write_uint32(address, uint32_val);
+}
+
+/**
+ * @brief Write an IEEE754 double-precision float across four consecutive registers
+ */
+esp_err_t modbus_write_double(uint16_t address, double value)
+{
+    uint8_t tx_buf[14];
+
+    tx_buf[0] = MODBUS_SLAVE_ADDR;
+    tx_buf[1] = 0x10;  /* function code 10: write multiple registers */
+    tx_buf[2] = address >> 8;
+    tx_buf[3] = address & 0xFF;
+    tx_buf[4] = 4 >> 8;  /* quantity = 4 */
+    tx_buf[5] = 4 & 0xFF;
+    tx_buf[6] = (uint64_t)value >> 56;
+    tx_buf[7] = ((uint64_t)value >> 48) & 0xFF;
+    tx_buf[8] = ((uint64_t)value >> 40) & 0xFF;
+    tx_buf[9] = ((uint64_t)value >> 32) & 0xFF;
+    tx_buf[10] = ((uint64_t)value >> 24) & 0xFF;
+    tx_buf[11] = ((uint64_t)value >> 16) & 0xFF;
+    tx_buf[12] = ((uint64_t)value >> 8) & 0xFF;
+    tx_buf[13] = (uint64_t)value & 0xFF;
+
+    return modbus_transact(tx_buf, 14, NULL, 0, NULL);
+}
