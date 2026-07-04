@@ -40,7 +40,17 @@ jobs:
         run: idf.py set-target $ESP_TARGET
 
       - name: Build project
-        run: idf.py build
+        run: |
+          set -o pipefail
+          idf.py build 2>&1 | tee build_output.log
+
+      - name: Surface build errors as annotations
+        if: failure()
+        run: |
+          grep -E "(error:|undefined reference|FAILED:)" build_output.log | head -40 | \
+            while IFS= read -r line; do echo "::error::${line}"; done
+          echo "::error::--- last 30 lines of build output ---"
+          tail -n 30 build_output.log | while IFS= read -r line; do echo "::error::${line}"; done
 
       - name: Run size info
         run: idf.py size
