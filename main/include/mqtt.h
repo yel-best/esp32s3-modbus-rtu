@@ -58,7 +58,7 @@ esp_err_t mqtt_publish(const char *topic, const void *data, size_t data_len);
  * @brief Subscribe to an MQTT topic
  * @param topic Topic name (null-terminated string)
  * @param handler Callback function for incoming messages
- * @return ESP_OK on success, ESP_ERR_NOT_CONNECTED if not connected
+ * @return ESP_OK on success, ESP_ERR_INVALID_STATE if not connected
  */
 esp_err_t mqtt_subscribe(const char *topic, mqtt_event_data_handler_t handler);
 

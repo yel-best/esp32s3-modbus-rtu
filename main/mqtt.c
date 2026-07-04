@@ -178,7 +178,7 @@ esp_err_t mqtt_publish(const char *topic, const void *data, size_t data_len)
 esp_err_t mqtt_subscribe(const char *topic, mqtt_event_data_handler_t handler)
 {
     if (!mqtt_initialized || !mqtt_connected) {
-        return ESP_ERR_NOT_CONNECTED;
+        return ESP_ERR_INVALID_STATE;
     }
     if (topic == NULL) {
         return ESP_ERR_INVALID_ARG;
