@@ -380,7 +380,7 @@ esp_err_t modbus_read_double(uint16_t address, double *value)
  */
 esp_err_t modbus_write_uint32(uint16_t address, uint32_t value)
 {
-    uint8_t tx_buf[8];
+    uint8_t tx_buf[11];
 
     tx_buf[0] = MODBUS_SLAVE_ADDR;
     tx_buf[1] = 0x10;  /* function code 10: write multiple registers */
@@ -388,12 +388,13 @@ esp_err_t modbus_write_uint32(uint16_t address, uint32_t value)
     tx_buf[3] = address & 0xFF;
     tx_buf[4] = 2 >> 8;  /* quantity = 2 */
     tx_buf[5] = 2 & 0xFF;
-    tx_buf[6] = (value >> 24) & 0xFF;
-    tx_buf[7] = (value >> 16) & 0xFF;
-    tx_buf[8] = (value >> 8) & 0xFF;
-    tx_buf[9] = value & 0xFF;
+    tx_buf[6] = 4;       /* byte count */
+    tx_buf[7] = (value >> 24) & 0xFF;
+    tx_buf[8] = (value >> 16) & 0xFF;
+    tx_buf[9] = (value >> 8) & 0xFF;
+    tx_buf[10] = value & 0xFF;
 
-    return modbus_transact(tx_buf, 10, NULL, 0, NULL);
+    return modbus_transact(tx_buf, 11, NULL, 0, NULL);
 }
 
 /**
@@ -411,7 +412,10 @@ esp_err_t modbus_write_float(uint16_t address, float value)
  */
 esp_err_t modbus_write_double(uint16_t address, double value)
 {
-    uint8_t tx_buf[14];
+    uint8_t tx_buf[15];
+    uint64_t bits;
+
+    memcpy(&bits, &value, sizeof(double));  /* bit pattern, not numeric conversion */
 
     tx_buf[0] = MODBUS_SLAVE_ADDR;
     tx_buf[1] = 0x10;  /* function code 10: write multiple registers */
@@ -419,14 +423,15 @@ esp_err_t modbus_write_double(uint16_t address, double value)
     tx_buf[3] = address & 0xFF;
     tx_buf[4] = 4 >> 8;  /* quantity = 4 */
     tx_buf[5] = 4 & 0xFF;
-    tx_buf[6] = (uint64_t)value >> 56;
-    tx_buf[7] = ((uint64_t)value >> 48) & 0xFF;
-    tx_buf[8] = ((uint64_t)value >> 40) & 0xFF;
-    tx_buf[9] = ((uint64_t)value >> 32) & 0xFF;
-    tx_buf[10] = ((uint64_t)value >> 24) & 0xFF;
-    tx_buf[11] = ((uint64_t)value >> 16) & 0xFF;
-    tx_buf[12] = ((uint64_t)value >> 8) & 0xFF;
-    tx_buf[13] = (uint64_t)value & 0xFF;
+    tx_buf[6] = 8;       /* byte count */
+    tx_buf[7] = bits >> 56;
+    tx_buf[8] = (bits >> 48) & 0xFF;
+    tx_buf[9] = (bits >> 40) & 0xFF;
+    tx_buf[10] = (bits >> 32) & 0xFF;
+    tx_buf[11] = (bits >> 24) & 0xFF;
+    tx_buf[12] = (bits >> 16) & 0xFF;
+    tx_buf[13] = (bits >> 8) & 0xFF;
+    tx_buf[14] = bits & 0xFF;
 
-    return modbus_transact(tx_buf, 14, NULL, 0, NULL);
+    return modbus_transact(tx_buf, 15, NULL, 0, NULL);
 }
