@@ -6,6 +6,23 @@
 
 ---
 
+## ⚠️ Status Update (2026-07-06)
+
+This report is a snapshot of the repository as of 2026-07-03. Several findings are now outdated:
+
+| Original finding | Current status |
+|------------------|----------------|
+| Continuous Integration: "Missing CI Configuration" (Score 1/10) | ✅ **Resolved** — `.github/workflows/ci.yml` exists: ESP-IDF v5.4.4 build on push/PR, build-error annotations on failure, artifact upload, and tag-triggered GitHub Release packaging. Test execution in CI is still missing. |
+| Testing: "Missing Test Suite" (unit tests: No) | ⚠️ **Partially resolved** — Unity tests exist under `tests/` (`modbus_test.c`, `wifi_test.c`, `mqtt_test.c`) but are **not wired into the build**; they target pre-rewrite module APIs (see `tests/README.md`). |
+| Repository structure: `src/` + `include/` layout | ❌ **Stale** — actual layout is `main/` + `main/include/` (standard ESP-IDF component layout). |
+| Build config: `required_components.json` listed as valid | ❌ **Stale** — this file no longer exists in the repository. |
+| Release Notes: "Missing" | ✅ **Resolved** — GitHub Releases with auto-generated notes are published on `v*` tags. |
+| Hardcoded MQTT broker URI in source | ⚠️ **Mitigated** — broker URI is now loaded from NVS (`mqtt`/`broker_uri`) with a compile-time default fallback. |
+
+The remaining findings (API documentation gaps, missing CHANGELOG, installation/troubleshooting guides) are still accurate.
+
+---
+
 ## Executive Summary
 
 This QA report assesses the non-functional aspects of the project: documentation completeness, build configuration, licensing, and overall deliverable quality. The project is **functionally complete** but has **significant gaps in documentation and testing infrastructure**.

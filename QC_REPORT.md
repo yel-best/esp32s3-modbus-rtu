@@ -6,6 +6,22 @@
 
 ---
 
+## ⚠️ Status Update (2026-07-06)
+
+This report is a snapshot as of 2026-07-03. All file locations below reference the old `src/` layout; current code lives in `main/`. Verified against current code:
+
+| Issue | Current status |
+|-------|----------------|
+| #1 Self-deleting tasks (`vTaskDelete(NULL)`) | ✅ **Fixed** — no self-deleting task pattern remains in `main/modbus.c`, `main/mqtt.c`, `main/wifi.c`. |
+| #2 Duplicate `mqtt_subscribe()`/`mqtt_unsubscribe()` definitions | ✅ **Fixed** — each is defined exactly once (`main/mqtt.c:178`, `main/mqtt.c:201`). |
+| #3 Unsafe cast in `mqtt_event_handler` | ✅ **Fixed** — handler now switches on `event_id` and uses `esp_mqtt_event_handle_t` properly. |
+| #4 No error check for `esp_wifi_set_mode()` | ✅ **Addressed** — wrapped in `ESP_ERROR_CHECK()` (aborts on failure; idiomatic for init-time calls). |
+| #5 Missing NULL/length validation in `wifi_connect()` | ✅ **Fixed** — NULL and length checks return `ESP_ERR_INVALID_ARG`. |
+| #8 Hardcoded MQTT broker address | ✅ **Mitigated** — URI loaded from NVS (`mqtt`/`broker_uri`) with compile-time default fallback. |
+| Minor #14/#15 (no unit tests / no CI) | ⚠️ **Partially resolved** — CI builds firmware via GitHub Actions; Unity tests exist in `tests/` but are not wired into the build. |
+
+---
+
 ## Executive Summary
 
 The project implements Modbus RTU, WiFi, and MQTT for ESP32-S3 with ESP-IDF v5.4.4. The codebase is functional but contains **8 critical bugs**, **12 medium-priority issues**, and **15 minor concerns** that need attention before production deployment.

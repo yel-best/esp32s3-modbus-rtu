@@ -18,3 +18,5 @@ monitor.out
 
 # Serial monitor output
 serial-monitor.out
+# graphify knowledge graph (generated)
+graphify-out/
